@@ -1,0 +1,5 @@
+It could be caused by third party service like McAfee Rouge system centre. So check the third party service via msconfig command with Hide all Microsoft services option on these computers.
+
+If you want to know the event background details, please disable the computer browser service, enable the object access and process tracking auditing.
+To enable Process Tracking and object access:  Secpol.msc--Local Policies--Audit Policy--Audit Process Tracking (Success) and object access (Success).
+

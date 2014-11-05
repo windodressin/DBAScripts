@@ -1,0 +1,1 @@
+Get-WmiObject -computer carsqlserver win32_processor | select LoadPercentage
