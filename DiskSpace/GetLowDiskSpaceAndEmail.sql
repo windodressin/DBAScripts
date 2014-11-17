@@ -1,4 +1,10 @@
 /* Email DBA if disk space is low */
+/* Set to Run Every 4 Hours********/
+
+SET NOCOUNT ON
+
+DECLARE @SpaceLeft int
+SET	    @SpaceLeft = 1024
 
 --Alert if Disk Space is less than 1GB. ---
 SELECT DISTINCT dovs.logical_volume_name AS LogicalName,
@@ -9,15 +15,11 @@ FROM sys.master_files mf
 CROSS APPLY sys.dm_os_volume_stats(mf.database_id, mf.FILE_ID) dovs
 
 ---- send mail message -----
- IF (SELECT COUNT(FreeSpaceInMB) FROM ##DiskSpace WHERE FreeSpaceInMB <= 1024)
-	> 0
-
-BEGIN
-SET NOCOUNT OFF
-DECLARE @tableHTML1  NVARCHAR(MAX) ;
-
-
-SET @tableHTML1 = 
+ IF EXISTS (SELECT FreeSpaceInMB FROM ##DiskSpace WHERE FreeSpaceInMB <= @SpaceLeft)
+	BEGIN
+	DECLARE @tableHTML1  NVARCHAR(MAX) ;
+	SET NOCOUNT OFF
+	SET @tableHTML1 = 
     N'<table style = "font-family: Arial; font-size: 8pt" border = "1" cellspacing = "0" cellpadding = "2" width=50%>' +
     N'<tr style = "background-color: blue; font-size: 10pt;"><th ALIGN="left">Logical Name</th><th ALIGN="left">Drive</th><th ALIGN="left">Free Space In MB</th>' +
     CAST ( ( SELECT td = LogicalName,        '',
@@ -25,27 +27,27 @@ SET @tableHTML1 =
         td = FreeSpaceInMB, ''
 
 	FROM ##DiskSpace
-    WHERE FreeSpaceInMB <= 1024
+    WHERE FreeSpaceInMB <= @SpaceLeft
     FOR XML PATH('tr'), TYPE 
     ) AS NVARCHAR(MAX) ) +
     N'</table>';
 
-DECLARE @subjectMessage varchar(255)
-DECLARE @alertEmail varchar(255)
-SELECT @subjectMessage = @@servername + ' Low Disk Space Alert'
+	DECLARE @subjectMessage varchar(255)
+	DECLARE @alertEmail varchar(255)
+	SELECT @subjectMessage = @@servername + ' Low Disk Space Alert'
 
-SELECT @alertEmail = EMAIL	 
-FROM dba_store.dbo.JOB_AND_ALERT_CONTACT WITH (READUNCOMMITTED)
-WHERE CATEGORY = 'DATABASE' AND NotifyPrimary = 1
+	SELECT @alertEmail = EMAIL	 
+	FROM dba_store.dbo.JOB_AND_ALERT_CONTACT WITH (READUNCOMMITTED)
+	WHERE CATEGORY = 'DATABASE' AND NotifyPrimary = 1
 
-EXEC msdb.dbo.sp_send_dbmail 
-	@profile_name = 'SQL Server Notification',
-	@recipients=@alertEmail,
-	@subject = @subjectMessage,
-    @body = @tableHTML1,
-    @body_format = 'HTML' ;  
+	EXEC msdb.dbo.sp_send_dbmail 
+		 @profile_name = 'SQL Server Notification',
+		 @recipients=@alertEmail,
+		 @subject = @subjectMessage,
+		 @body = @tableHTML1,
+		 @body_format = 'HTML' ;  
 
-END ELSE 
+	END ELSE 
 BEGIN
 PRINT 'All Good!'
 END

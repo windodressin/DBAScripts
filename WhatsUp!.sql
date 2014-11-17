@@ -1,3 +1,22 @@
+/*
+--GET ROOT BLOCKER--
+SELECT DISTINCT(l.request_SESSION_Id)
+FROM sys.dm_tran_locks AS l
+	 JOIN sys.dm_tran_locks AS l1 ON l.resource_associated_entity_id = l1.resource_associated_entity_id
+WHERE l.request_status <> l1.request_status AND ( l.resource_description = l1.resource_description
+	  OR (l.resource_description IS NULL AND l1.resource_description IS NULL))
+	  AND (l.request_status)='GRANT' AND l.request_SESSION_Id 
+	  NOT IN (SELECT DISTINCT(l.request_SESSION_Id)
+			 FROM sys.dm_tran_locks AS l JOIN sys.dm_tran_locks AS l1 
+			 ON l.resource_associated_entity_id = l1.resource_associated_entity_id
+			 WHERE l.request_status <> l1.request_status 
+			       AND ( l.resource_description = l1.resource_description
+				   OR (l.resource_description IS NULL AND l1.resource_description IS NULL))
+				   AND (l.request_status)='WAIT')
+			 ORDER BY (l.request_SESSION_Id)
+*/
+----------------------------------------------------------------------------------------------
+
 --Get current WAITS!!
 SELECT 
 	owt.session_id,
@@ -75,20 +94,22 @@ DBA_STORE..sp_WhoIsActive @get_plans =1, @get_additional_info =1  --1
 
 -----------------------------------------------
 /*
+/*
 --GET ROOT BLOCKER--
-SELECT
-blocked_query.session_id AS blocked_session_id,
-blocking_query.session_id AS blocking_session_id,
-sql_text.text AS blocking_text,
-waits.wait_type AS blocking_resource
-FROM sys.dm_exec_requests blocked_query
-JOIN sys.dm_exec_requests blocking_query ON
-blocked_query.blocking_session_id = blocking_query.session_id
-CROSS APPLY
-(
-SELECT *
-FROM sys.dm_exec_sql_text(blocking_query.sql_handle)
-) sql_text
-JOIN sys.dm_os_waiting_tasks waits ON
-waits.session_id = blocking_query.session_id
+SELECT DISTINCT(l.request_SESSION_Id)
+FROM sys.dm_tran_locks AS l
+	 JOIN sys.dm_tran_locks AS l1 ON l.resource_associated_entity_id = l1.resource_associated_entity_id
+WHERE l.request_status <> l1.request_status AND ( l.resource_description = l1.resource_description
+	  OR (l.resource_description IS NULL AND l1.resource_description IS NULL))
+	  AND (l.request_status)='GRANT' AND l.request_SESSION_Id 
+	  NOT IN (SELECT DISTINCT(l.request_SESSION_Id)
+			 FROM sys.dm_tran_locks AS l JOIN sys.dm_tran_locks AS l1 
+			 ON l.resource_associated_entity_id = l1.resource_associated_entity_id
+			 WHERE l.request_status <> l1.request_status 
+			       AND ( l.resource_description = l1.resource_description
+				   OR (l.resource_description IS NULL AND l1.resource_description IS NULL))
+				   AND (l.request_status)='WAIT')
+			 ORDER BY (l.request_SESSION_Id)
+
+*/
 */
